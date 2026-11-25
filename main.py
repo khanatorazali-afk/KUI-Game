@@ -259,6 +259,13 @@ class Kui(App):
     def start_music(self):
         self.stop_music()
         self.local_audio=False
+        bundled=next((BASE/'assets'/f'{self.song}.{ext}' for ext in ('mp3','wav') if (BASE/'assets'/f'{self.song}.{ext}').is_file()),None)
+        if bundled and platform=='android':
+            try:
+                self.music=AndroidTrack(bundled.resolve().as_uri(),self.volume)
+                return
+            except Exception:
+                self.stop_music()
         if platform=='android' and self.audio_uris.get(self.song) and not self.room:
             try:
                 self.music=AndroidTrack(self.audio_uris[self.song],self.volume)
@@ -283,8 +290,6 @@ class Kui(App):
     def note_times(self):
         # Optional chart: onset times in seconds, per difficulty, measured from recording start.
         if self.music:
-            if self.song=='aday' and abs(self.music.length-127.707)<.5:
-                return ADAY_CHART[{.88:'easy',.66:'normal',.48:'hard'}.get(self.interval,'normal')]
             try:
                 chart=json.loads((BASE/'assets'/f'{self.song}.json').read_text(encoding='utf8'))
                 key={.88:'easy',.66:'normal',.48:'hard'}.get(self.interval,'normal')
@@ -293,6 +298,8 @@ class Kui(App):
                     return times
             except (OSError, ValueError, TypeError, KeyError):
                 pass
+            if self.song=='aday' and abs(self.music.length-127.707)<.5:
+                return ADAY_CHART[{.88:'easy',.66:'normal',.48:'hard'}.get(self.interval,'normal')]
             length=self.music.length
             if length>2:
                 return [1.7+i*self.interval for i in range(max(1,int((length-1.7)/self.interval)+1))]
