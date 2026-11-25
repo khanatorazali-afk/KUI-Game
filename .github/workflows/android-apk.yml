@@ -1,0 +1,37 @@
+name: Build KUI Android APK
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/android-apk.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip autoconf automake libtool pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake libffi-dev libssl-dev autopoint gettext
+          python -m pip install --upgrade pip
+          python -m pip install buildozer setuptools 'cython==0.29.34'
+      - name: Build debug APK
+        run: |
+          sed -i '/^\[app\]/a android.accept_sdk_license = True' buildozer.spec
+          buildozer -v android debug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KUI-Android
+          path: bin/*.apk
+          if-no-files-found: error
