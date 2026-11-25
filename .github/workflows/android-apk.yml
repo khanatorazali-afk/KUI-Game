@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - '.github/workflows/android-apk.yml'
+      - 'main.py'
+      - 'buildozer.spec'
+      - 'assets/**'
 permissions:
   contents: read
 jobs:
