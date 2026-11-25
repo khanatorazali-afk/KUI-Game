@@ -1,11 +1,12 @@
 [app]
 title = KUI
+icon.filename = %(source.dir)s/assets/kui_icon.png
 package.name = kui
 package.domain = kz.demo
 source.dir = .
-source.include_exts = py,wav,mp3,ogg,json,png,kv
+source.include_exts = py,wav,mp3,ogg,json,png,kv,ttf
 source.exclude_patterns = server.py,tests/*
-version = 0.2.0
+version = 0.2.1
 requirements = python3,kivy
 orientation = portrait
 fullscreen = 0

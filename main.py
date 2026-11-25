@@ -87,15 +87,15 @@ class Brand(Widget):
                 r=u*(2.5+i*.38+.13*math.sin(p*1.6))
                 Color(.08,.66,.79,.018+(7-i)*.008); Ellipse(pos=(x-r,y-r*.74),size=(r*2,r*1.48))
             Color(.26,.20,.70,.16); Ellipse(pos=(x+2*u,y-.8*u),size=(4.5*u,1.6*u))
-            Color(.02,.12,.20,.94); RoundedRectangle(pos=(x-2.7*u,y-2.33*u),size=(5.4*u,4.66*u),radius=[u*.75])
+            Color(.015,.012,.009,1); RoundedRectangle(pos=(x-2.7*u,y-2.33*u),size=(5.4*u,4.66*u),radius=[u*.75])
             Color(*GOLD); Line(rounded_rectangle=(x-2.7*u,y-2.33*u,5.4*u,4.66*u,.75*u),width=1.2)
-            Color(.22,.92,.88,.55); Line(circle=(x,y,2.02*u),width=1)
+            Color(.84,.57,.19,.85); Line(circle=(x,y,2.02*u),width=1)
             # Dombra silhouette, warm wood and two strings.
-            Color(.72,.40,.13,1); Ellipse(pos=(x-.92*u,y-1.74*u),size=(1.84*u,2.12*u))
+            Color(.91,.63,.22,1); Ellipse(pos=(x-.92*u,y-1.74*u),size=(1.84*u,2.12*u))
             Color(*GOLD); Line(ellipse=(x-.92*u,y-1.74*u,1.84*u,2.12*u),width=1.5)
             Color(.92,.68,.33,1); RoundedRectangle(pos=(x-.20*u,y-.02*u),size=(.40*u,1.91*u),radius=[u*.08])
             Color(.98,.83,.49,1); RoundedRectangle(pos=(x-.32*u,y+1.50*u),size=(.64*u,.48*u),radius=[u*.08])
-            Color(.18,.11,.07,1); Ellipse(pos=(x-.25*u,y-.72*u),size=(.5*u,.5*u))
+            Color(.025,.018,.012,1); Ellipse(pos=(x-.25*u,y-.72*u),size=(.5*u,.5*u))
             Color(.99,.94,.75,1)
             for off in (-.07,.07):Line(points=[x+off*u,y-1.40*u,x+off*u,y+1.86*u],width=.8)
             for j in range(6):
@@ -181,11 +181,11 @@ class Kui(App):
         self.root_box.clear_widgets()
         if title=='Домбыра  •  ырғақ ойыны':
             self.root_box.add_widget(Brand(size_hint_y=None,height=dp(88)))
-        self.label('K Ü I',34,46,GOLD); self.label(title,19,35,CYAN)
-    def label(self,text,size=16,height=38,color=(.92,.94,.98,1)):
-        a=Label(text=text,font_size=dp(size),color=color,size_hint_y=None,height=dp(height),halign='center',valign='middle'); a.bind(size=lambda w,s:setattr(w,'text_size',s)); self.root_box.add_widget(a); return a
+        self.label('K Ü I',34,46,GOLD,display=True); self.label(title,19,35,CYAN)
+    def label(self,text,size=16,height=38,color=(.92,.94,.98,1),display=False):
+        font=BASE/'assets'/('title.ttf' if display else 'body.ttf'); a=Label(text=text,font_name=str(font) if font.is_file() else 'Roboto',font_size=dp(size),color=color,size_hint_y=None,height=dp(height),halign='center',valign='middle'); a.bind(size=lambda w,s:setattr(w,'text_size',s)); self.root_box.add_widget(a); return a
     def button(self,text,fn):
-        b=Button(text=text,font_size=dp(16),size_hint_y=None,height=dp(49),background_normal='',background_down='',background_color=(0,0,0,0),color=(.94,.96,1,1))
+        font=BASE/'assets'/'body.ttf'; b=Button(text=text,font_name=str(font) if font.is_file() else 'Roboto',font_size=dp(16),size_hint_y=None,height=dp(49),background_normal='',background_down='',background_color=(0,0,0,0),color=(.94,.96,1,1))
         with b.canvas.before:
             c=Color(*PANEL); shape=RoundedRectangle(pos=b.pos,size=b.size,radius=[dp(12)])
             Color(.17,.39,.47,1); outline=Line(rounded_rectangle=(*b.pos,*b.size,dp(12)),width=1)
