@@ -1,11 +1,11 @@
-import json, random, time, threading, urllib.request, urllib.parse
+import json, random, time, threading, urllib.request, urllib.parse, math
 from pathlib import Path
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.core.audio import SoundLoader
 from kivy.core.window import Window
-from kivy.graphics import Color, Rectangle, RoundedRectangle, Line
+from kivy.graphics import Color, Rectangle, RoundedRectangle, Line, Ellipse, Triangle
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -40,20 +40,83 @@ class AndroidTrack:
         try:self.player.stop()
         except Exception:pass
     def unload(self):self.player.release()
-class Brand(Widget):
+class ThemeRoot(BoxLayout):
     def __init__(self,**kw):
         super().__init__(**kw)
         self.bind(pos=self.paint,size=self.paint)
+        self.paint()
     def paint(self,*_):
-        self.canvas.clear(); x,y=self.center; u=min(self.width/12,self.height/5)
+        self.canvas.before.clear()
+        x,y=self.pos; w,h=self.size
+        with self.canvas.before:
+            Color(*BG); Rectangle(pos=self.pos,size=self.size)
+            for i in range(16):
+                f=i/15
+                Color(.025+.035*f,.045+.06*f,.09+.075*f,1)
+                Rectangle(pos=(x,y+h*i/16),size=(w,h/16+1))
+            Color(.09,.45,.65,.10); Ellipse(pos=(x-w*.44,y+h*.5),size=(w*1.2,h*.65))
+            Color(.24,.12,.55,.11); Ellipse(pos=(x+w*.52,y-h*.25),size=(w,h*.8))
+            Color(.09,.68,.64,.07); Ellipse(pos=(x+w*.55,y+h*.58),size=(w*.75,h*.5))
+            Color(.93,.72,.34,.28); Line(points=[x+dp(7),y+dp(12),x+dp(7),y+h-dp(12)],width=1)
+            Line(points=[x+w-dp(7),y+dp(12),x+w-dp(7),y+h-dp(12)],width=1)
+
+class Brand(Widget):
+    def __init__(self,**kw):
+        super().__init__(**kw)
+        self.phase=0.0; self.fx=None
+        self.bind(pos=self.paint,size=self.paint,parent=self.parent_changed)
+    def parent_changed(self,_,parent):
+        if self.fx:self.fx.cancel(); self.fx=None
+        if parent is not None:self.fx=Clock.schedule_interval(self.animate,1/24)
+    def animate(self,dt):
+        self.phase=(self.phase+dt)%100; self.paint()
+    def paint(self,*_):
+        self.canvas.clear(); x,y=self.center; w,h=self.size
+        if w<10 or h<10:return
+        u=min(w/16,h/5.2); p=self.phase
+        def note(nx,ny,k):
+            Ellipse(pos=(nx-.19*k,ny-.12*k),size=(.38*k,.24*k))
+            Line(points=[nx+.15*k,ny,nx+.15*k,ny+.83*k,nx+.52*k,ny+.64*k],width=1.15)
+        def ornament(ox,oy,scale,side):
+            for j in range(2):
+                z=scale*(1-.32*j)
+                Line(points=[ox,oy,ox+side*.45*z,oy+.65*z,ox+side*.98*z,oy+.24*z,ox+side*.68*z,oy-.14*z,ox+side*.28*z,oy+.18*z],width=1.1)
+                Line(points=[ox,oy,ox+side*.45*z,oy-.65*z,ox+side*.98*z,oy-.24*z,ox+side*.68*z,oy+.14*z],width=1.1)
         with self.canvas:
-            Color(.08,.19,.28,1); RoundedRectangle(pos=(x-2.4*u,y-2.3*u),size=(4.8*u,4.6*u),radius=[u*.8])
-            Color(*GOLD); Line(circle=(x,y,1.95*u),width=1.2)
-            for sign in (-1,1):
-                Color(*CYAN); Line(points=[x+sign*2.5*u,y,x+sign*3*u,y+.5*u,x+sign*3.5*u,y,x+sign*4*u,y-.5*u,x+sign*4.5*u,y],width=1.1)
-            Color(*GOLD); Line(points=[x,y+1.6*u,x,y-.25*u],width=3)
-            Line(ellipse=(x-.75*u,y-1.55*u,1.5*u,1.65*u),width=2.2)
-            Color(*CYAN); Line(points=[x-.12*u,y+1.6*u,x-.12*u,y-1.2*u],width=1)
+            for i in range(7,0,-1):
+                r=u*(2.5+i*.38+.13*math.sin(p*1.6))
+                Color(.08,.66,.79,.018+(7-i)*.008); Ellipse(pos=(x-r,y-r*.74),size=(r*2,r*1.48))
+            Color(.26,.20,.70,.16); Ellipse(pos=(x+2*u,y-.8*u),size=(4.5*u,1.6*u))
+            Color(.02,.12,.20,.94); RoundedRectangle(pos=(x-2.7*u,y-2.33*u),size=(5.4*u,4.66*u),radius=[u*.75])
+            Color(*GOLD); Line(rounded_rectangle=(x-2.7*u,y-2.33*u,5.4*u,4.66*u,.75*u),width=1.2)
+            Color(.22,.92,.88,.55); Line(circle=(x,y,2.02*u),width=1)
+            # Dombra silhouette, warm wood and two strings.
+            Color(.72,.40,.13,1); Ellipse(pos=(x-.92*u,y-1.74*u),size=(1.84*u,2.12*u))
+            Color(*GOLD); Line(ellipse=(x-.92*u,y-1.74*u,1.84*u,2.12*u),width=1.5)
+            Color(.92,.68,.33,1); RoundedRectangle(pos=(x-.20*u,y-.02*u),size=(.40*u,1.91*u),radius=[u*.08])
+            Color(.98,.83,.49,1); RoundedRectangle(pos=(x-.32*u,y+1.50*u),size=(.64*u,.48*u),radius=[u*.08])
+            Color(.18,.11,.07,1); Ellipse(pos=(x-.25*u,y-.72*u),size=(.5*u,.5*u))
+            Color(.99,.94,.75,1)
+            for off in (-.07,.07):Line(points=[x+off*u,y-1.40*u,x+off*u,y+1.86*u],width=.8)
+            for j in range(6):
+                fy=y+(.32+j*.19)*u; Line(points=[x-.19*u,fy,x+.19*u,fy],width=.7)
+            for side in (-1,1):
+                Color(.98,.74,.33,.83); ornament(x+side*3.2*u,y,.99*u,side)
+                Color(.27,.92,.89,.60+.18*math.sin(p*2+side)); note(x+side*5.55*u,y-1.13*u+.23*u*math.sin(p+side),u*.86)
+            Color(.78,.55,1,.58); note(x+5.25*u,y+1.0*u+.15*u*math.sin(p),u*.64)
+            # Small stylized Kazakhstan flag motif.
+            fx=x-6.3*u; fy=y+.58*u; fw=2.50*u; fh=1.25*u
+            Color(.05,.72,.83,1); RoundedRectangle(pos=(fx,fy),size=(fw,fh),radius=[.10*u])
+            Color(*GOLD); sx=fx+1.40*u; sy=fy+.79*u
+            Ellipse(pos=(sx-.16*u,sy-.16*u),size=(.32*u,.32*u))
+            for j in range(16):
+                angle=j*math.pi/8
+                Line(points=[sx+math.cos(angle)*.20*u,sy+math.sin(angle)*.20*u,sx+math.cos(angle)*.28*u,sy+math.sin(angle)*.28*u],width=.65)
+            Line(points=[sx-.55*u,fy+.41*u,sx-.30*u,fy+.30*u,sx,fy+.36*u,sx+.30*u,fy+.30*u,sx+.55*u,fy+.41*u],width=1.1)
+            Line(points=[sx-.12*u,fy+.34*u,sx,fy+.18*u,sx+.12*u,fy+.34*u],width=.9)
+            for j in range(4):
+                oy=fy+(.14+j*.30)*u
+                Line(points=[fx+.12*u,oy,fx+.23*u,oy+.10*u,fx+.34*u,oy,fx+.23*u,oy-.10*u,fx+.12*u,oy],width=.65)
 class Board(Widget):
     def __init__(self,app,**kw):
         super().__init__(**kw); self.app=app; self.start=time.monotonic(); self.score=0; self.index=0; self.dead=False
@@ -112,12 +175,12 @@ class Kui(App):
         try:self.data=json.loads(self.path.read_text(encoding='utf8'))
         except Exception:self.data={}
         self.player=self.data.get('player','Ойыншы'); self.url=self.data.get('url',''); self.volume=self.data.get('volume',.7); self.interval=.66; self.song='aday'; self.records=self.data.get('records',{}); self.room=None; self.poll=None; self.board=None; self.pending=False; self.sound=None; self.music=None; self.local_audio=False; self.audio_uris=self.data.get('audio_uris',{}); self.audio_uris.setdefault('aday',self.data.get('aday_uri','')); self.session=0
-        self.root_box=BoxLayout(orientation='vertical',padding=dp(18),spacing=dp(10)); self.menu(); return self.root_box
+        self.root_box=ThemeRoot(orientation='vertical',padding=dp(16),spacing=dp(7)); self.menu(); return self.root_box
     def save(self):self.path.write_text(json.dumps({'player':self.player,'url':self.url,'volume':self.volume,'records':self.records,'audio_uris':self.audio_uris},ensure_ascii=False),encoding='utf8')
     def clear(self,title):
         self.root_box.clear_widgets()
         if title=='Домбыра  •  ырғақ ойыны':
-            self.root_box.add_widget(Brand(size_hint_y=None,height=dp(78)))
+            self.root_box.add_widget(Brand(size_hint_y=None,height=dp(88)))
         self.label('K Ü I',34,46,GOLD); self.label(title,19,35,CYAN)
     def label(self,text,size=16,height=38,color=(.92,.94,.98,1)):
         a=Label(text=text,font_size=dp(size),color=color,size_hint_y=None,height=dp(height),halign='center',valign='middle'); a.bind(size=lambda w,s:setattr(w,'text_size',s)); self.root_box.add_widget(a); return a
@@ -140,7 +203,7 @@ class Kui(App):
         if self.board and not self.board.dead:self.board.dead=True; self.board.event.cancel()
         self.board=None; self.room=None; self.pending=False
     def menu(self):
-        self.leave(); self.clear('Домбыра  •  ырғақ ойыны'); self.button('Ойнау / Күй таңдау',lambda:self.choose('solo')); self.button('Онлайн дуэль',lambda:self.choose('duel')); self.button('Доспен жарысу',self.friend); self.button('Әлемдік рейтинг',lambda:self.choose('rank')); self.button('Профиль және баптаулар',self.settings); self.label('CREATED BY ORAZALY',13,30,GOLD)
+        self.leave(); self.clear('Домбыра  •  ырғақ ойыны'); self.button('Ойнау / Күй таңдау',lambda:self.choose('solo')); self.button('Онлайн дуэль',lambda:self.choose('duel')); self.button('Доспен жарысу',self.friend); self.button('Әлемдік рейтинг',lambda:self.choose('rank')); self.button('Профиль және баптаулар',self.settings); self.root_box.add_widget(Widget(size_hint_y=1)); footer=self.label('orazaly',11,22,(.76,.83,.88,1)); footer.halign='left'
     def choose(self,mode):
         self.clear('Күй таңдау'); scroll=ScrollView(); box=BoxLayout(orientation='vertical',size_hint_y=None,spacing=dp(6)); box.bind(minimum_height=box.setter('height'))
         for key,name in SONGS:
