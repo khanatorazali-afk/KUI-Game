@@ -21,8 +21,10 @@ if platform not in ('android','ios'): Window.size=(400,740)
 class Board(Widget):
     def __init__(self,app,**kw):
         super().__init__(**kw); self.app=app; self.start=time.monotonic(); self.score=0; self.index=0; self.dead=False
-        rng=random.Random(app.song); self.lanes=[rng.randrange(4) for _ in range(40)]; self.interval=app.interval; self.event=Clock.schedule_interval(self.tick,1/60)
-    def pos_y(self,i): return .14+(1.7+i*self.interval-(time.monotonic()-self.start))*.48
+        rng=random.Random(app.song); self.interval=app.interval
+        self.times=app.note_times()
+        self.lanes=[rng.randrange(4) for _ in self.times]; self.event=Clock.schedule_interval(self.tick,1/60)
+    def pos_y(self,i): return .14+(self.times[i]-(time.monotonic()-self.start))*.48
     def tick(self,dt):
         if self.dead:return
         if self.index<len(self.lanes) and self.pos_y(self.index)<.025: self.finish(False); return
@@ -55,7 +57,7 @@ class Kui(App):
         self.title='KÜI'; self.path=Path(self.user_data_dir)/'settings.json'; self.path.parent.mkdir(parents=True,exist_ok=True)
         try:self.data=json.loads(self.path.read_text(encoding='utf8'))
         except Exception:self.data={}
-        self.player=self.data.get('player','Ойыншы'); self.url=self.data.get('url',''); self.volume=self.data.get('volume',.7); self.interval=.66; self.song='aday'; self.records=self.data.get('records',{}); self.room=None; self.poll=None; self.board=None; self.pending=False; self.sound=None; self.session=0
+        self.player=self.data.get('player','Ойыншы'); self.url=self.data.get('url',''); self.volume=self.data.get('volume',.7); self.interval=.66; self.song='aday'; self.records=self.data.get('records',{}); self.room=None; self.poll=None; self.board=None; self.pending=False; self.sound=None; self.music=None; self.session=0
         self.root_box=BoxLayout(orientation='vertical',padding=dp(18),spacing=dp(10)); self.menu(); return self.root_box
     def save(self):self.path.write_text(json.dumps({'player':self.player,'url':self.url,'volume':self.volume,'records':self.records},ensure_ascii=False),encoding='utf8')
     def clear(self,title):
@@ -65,12 +67,13 @@ class Kui(App):
     def button(self,text,fn):
         b=Button(text=text,font_size=dp(17),size_hint_y=None,height=dp(52),background_normal='',background_color=PANEL,color=GOLD); b.bind(on_release=lambda *_:fn()); self.root_box.add_widget(b); return b
     def leave(self):
+        self.stop_music()
         self.session+=1
         if self.poll:self.poll.cancel(); self.poll=None
         if self.board and not self.board.dead:self.board.dead=True; self.board.event.cancel()
         self.board=None; self.room=None; self.pending=False
     def menu(self):
-        self.leave(); self.clear('Домбыра  •  ырғақ ойыны'); self.button('Ойнау / Күй таңдау',lambda:self.choose('solo')); self.button('Онлайн дуэль',lambda:self.choose('duel')); self.button('Доспен жарысу',self.friend); self.button('Әлемдік рейтинг',lambda:self.choose('rank')); self.button('Профиль және баптаулар',self.settings); self.label('ДЕМО • түпнұсқа күй аудиосы қосылмаған',13,45)
+        self.leave(); self.clear('Домбыра  •  ырғақ ойыны'); self.button('Ойнау / Күй таңдау',lambda:self.choose('solo')); self.button('Онлайн дуэль',lambda:self.choose('duel')); self.button('Доспен жарысу',self.friend); self.button('Әлемдік рейтинг',lambda:self.choose('rank')); self.button('Профиль және баптаулар',self.settings); self.label('Домбыра жазбалары: '+str(sum((BASE/'assets'/f'{k}.wav').is_file() for k,_ in SONGS))+' / '+str(len(SONGS)),13,45)
     def choose(self,mode):
         self.clear('Күй таңдау'); scroll=ScrollView(); box=BoxLayout(orientation='vertical',size_hint_y=None,spacing=dp(6)); box.bind(minimum_height=box.setter('height'))
         for key,name in SONGS:
@@ -86,12 +89,45 @@ class Kui(App):
         for name,v in [('Жеңіл',.88),('Орташа',.66),('Қиын',.48)]:self.button(name,lambda v=v:self.start_game(v))
         self.button('Артқа',lambda:self.choose('solo'))
     def start_game(self,interval=.66):
-        self.interval=interval; self.clear(dict(SONGS)[self.song]); self.score_label=self.label('Ұпай: 0',21,35); self.opponent=self.label('Алтын сызыққа жеткенде бас',14,35); self.board=Board(self); self.root_box.add_widget(self.board); self.button('Шығу',self.menu)
+        self.interval=interval; self.clear(dict(SONGS)[self.song]); self.score_label=self.label('Ұпай: 0',21,35); self.opponent=self.label('Алтын сызыққа жеткенде бас',14,35); self.start_music(); self.board=Board(self); self.root_box.add_widget(self.board); self.button('Шығу',self.menu)
+    def start_music(self):
+        self.stop_music()
+        path=BASE/'assets'/f'{self.song}.wav'
+        if path.is_file():
+            try:
+                self.music=SoundLoader.load(str(path))
+                if self.music:
+                    self.music.volume=self.volume
+                    self.music.play()
+            except Exception:
+                self.stop_music()
+    def stop_music(self):
+        if self.music:
+            self.music.stop(); self.music.unload(); self.music=None
+        if self.sound:
+            self.sound.stop(); self.sound.unload(); self.sound=None
+    def note_times(self):
+        # Optional chart: onset times in seconds, per difficulty, measured from recording start.
+        if self.music:
+            try:
+                chart=json.loads((BASE/'assets'/f'{self.song}.json').read_text(encoding='utf8'))
+                key={.88:'easy',.66:'normal',.48:'hard'}.get(self.interval,'normal')
+                times=[float(t) for t in chart[key]]
+                if times and times[0]>=0 and all(b>a for a,b in zip(times,times[1:])):
+                    return times
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
+            length=self.music.length
+            if length>2:
+                return [1.7+i*self.interval for i in range(max(1,int((length-1.7)/self.interval)+1))]
+        return [1.7+i*self.interval for i in range(40)]
     def play_note(self,i):
-        if self.sound:self.sound.stop()
+        if self.music:return
+        if self.sound:self.sound.stop(); self.sound.unload()
         self.sound=SoundLoader.load(str(BASE/'assets'/f'{i%8}.wav'))
         if self.sound:self.sound.volume=self.volume; self.sound.play()
     def finished(self,score,won):
+        self.stop_music()
         self.last_score=score; self.last_done=True; self.records[self.song]=max(score,self.records.get(self.song,0)); self.save(); self.clear('Күй аяқталды!' if won else 'Ойын аяқталды'); self.label(f'Ұпай: {score}  |  Рекорд: {self.records[self.song]}',20,60); self.label('★ ★ ★' if won else 'Қайта байқап көр',23,45,GOLD)
         if self.interval==.66 and self.url:self.request('/scores',{'song':self.song,'player':self.player,'score':score},lambda _:None)
         if self.room:self.opponent=self.label('Қарсылас нәтижесі күтілуде',15,65)
@@ -136,4 +172,6 @@ class Kui(App):
                     scores=[p['score'] for p in r['players']]; self.opponent.text+='\n'+('Тең ойын' if len(set(scores))==1 else 'Жеңімпаз: '+max(r['players'],key=lambda p:p['score'])['name']); self.poll.cancel(); self.poll=None
         def failed(e):self.pending=False
         self.request('/state',{'song':self.song,'player':self.player,'code':self.room['code'],'token':self.room['token'],'score':score,'done':self.last_done},state,failed)
+    def on_stop(self):
+        self.stop_music()
 if __name__=='__main__':Kui().run()
