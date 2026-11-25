@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -22,12 +22,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip autoconf automake libtool pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake libffi-dev libssl-dev autopoint gettext
+          sudo apt-get install -y git zip unzip autoconf automake libtool libtool-bin pkg-config zlib1g-dev libncurses-dev libtinfo5 cmake libffi-dev libssl-dev autopoint gettext
           python -m pip install --upgrade pip
-          python -m pip install buildozer setuptools 'cython==0.29.34'
+          python -m pip install 'buildozer==1.5.0' 'setuptools<70' 'cython==0.29.36'
       - name: Build debug APK
         run: |
           sed -i '/^\[app\]/a android.accept_sdk_license = True' buildozer.spec
+          sed -i '/^\[app\]/a p4a.branch = v2024.01.21\nandroid.ndk = 25b\nandroid.api = 33' buildozer.spec
           buildozer -v android debug
       - name: Upload APK
         uses: actions/upload-artifact@v4
